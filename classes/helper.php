@@ -322,21 +322,19 @@ class helper {
         $re = isset($config->replays_on_error_sample_rate) ? (float)$config->replays_on_error_sample_rate : null;
         $sendpii = !empty($config->send_default_pii);
 
-        // Prepare user identification for Replay (only if PII is enabled and user is logged in).
+        // Prepare user identification for Replay (always if user is logged in).
         $userjs = '';
-        if ($sendpii) {
-            global $USER;
-            if (isset($USER) && !isguestuser() && isloggedin()) {
-                $uid = (string)$USER->id;
-                $uname = isset($USER->username) ? (string)$USER->username : '';
-                $uemail = isset($USER->email) ? (string)$USER->email : '';
-                $ufullname = function_exists('fullname') ? (string)fullname($USER) : '';
-                $userjs = "      Sentry.setUser({ id: '" . addslashes($uid) . "'" .
-                    ($uname !== '' ? ", username: '" . addslashes($uname) . "'" : '') .
-                    ($uemail !== '' ? ", email: '" . addslashes($uemail) . "'" : '') .
-                    ($ufullname !== '' ? ", name: '" . addslashes($ufullname) . "'" : '') .
-                    " });\n";
-            }
+        global $USER;
+        if (isset($USER) && !isguestuser() && isloggedin()) {
+            $uid = (string)$USER->id;
+            $uname = isset($USER->username) ? (string)$USER->username : '';
+            $uemail = isset($USER->email) ? (string)$USER->email : '';
+            $ufullname = function_exists('fullname') ? (string)fullname($USER) : '';
+            $userjs = "      Sentry.setUser({ id: '" . addslashes($uid) . "'" .
+                ($uname !== '' ? ", username: '" . addslashes($uname) . "'" : '') .
+                ($uemail !== '' ? ", email: '" . addslashes($uemail) . "'" : '') .
+                ($ufullname !== '' ? ", name: '" . addslashes($ufullname) . "'" : '') .
+                " });\n";
         }
 
         // Build JS that appends the loader script and initializes Replay integration and sampling.
@@ -350,10 +348,8 @@ class helper {
             // Apply replay sampling if configured.
             (is_null($rs) ? "" : "      cfg.replaysSessionSampleRate=" . json_encode($rs) . ";\n") .
             (is_null($re) ? "" : "      cfg.replaysOnErrorSampleRate=" . json_encode($re) . ";\n") .
-            // Privacy per PII checkbox: if sending default PII, relax masking (explicit opt-in).
-            ($sendpii
-                ? "      var replayOpts={maskAllText:false,blockAllMedia:false};\n      cfg.integrations=[Sentry.replayIntegration(replayOpts)];\n"
-                : "") .
+            // Always relax masking to show data in replays, per request.
+            "      var replayOpts={maskAllText:false,blockAllMedia:false};\n      cfg.integrations=[Sentry.replayIntegration(replayOpts)];\n" .
             "      if(!cfg.integrations){ cfg.integrations=[Sentry.replayIntegration({})]; }\n" .
             "      Sentry.init(cfg);\n" .
             $userjs .
