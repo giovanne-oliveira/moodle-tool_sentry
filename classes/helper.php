@@ -351,7 +351,7 @@ class helper {
             // Always relax masking to show data in replays, per request.
             "      var replayOpts={maskAllText:false,blockAllMedia:false};\n      cfg.integrations=[Sentry.replayIntegration(replayOpts)];\n" .
             "      if(!cfg.integrations){ cfg.integrations=[Sentry.replayIntegration({})]; }\n" .
-            "      Sentry.init(cfg);\n" .
+            "      if(!Sentry.getCurrentHub || !Sentry.getCurrentHub().getClient()){ Sentry.init(cfg); }\n" .
             $userjs .
             "    } catch(e){}\n" .
             "  };\n" .
