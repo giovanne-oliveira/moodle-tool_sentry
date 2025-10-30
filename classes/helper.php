@@ -50,8 +50,22 @@ class helper {
         unset($config->replays_on_error_sample_rate);
 
         foreach (['ignore_exceptions', 'ignore_transactions', 'in_app_exclude', 'in_app_include'] as $key) {
-            if (isset($config->$key) && $config->$key === "") {
+            if (!isset($config->$key)) {
+                continue;
+            }
+            // Drop empty strings entirely.
+            if ($config->$key === "") {
                 unset($config->$key);
+                continue;
+            }
+            // Normalize comma-separated string to array of strings.
+            if (is_string($config->$key)) {
+                $parts = array_filter(array_map('trim', explode(',', $config->$key)), 'strlen');
+                $config->$key = array_values($parts);
+            }
+            // Ensure array of strings only.
+            if (is_array($config->$key)) {
+                $config->$key = array_values(array_map('strval', $config->$key));
             }
         }
 
