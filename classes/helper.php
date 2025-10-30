@@ -60,6 +60,16 @@ class helper {
 
         $configarray = (array) $config;
 
+        // Combine error_types multiselect (array) into PHP bitmask integer.
+        if (isset($configarray['error_types']) && is_array($configarray['error_types'])) {
+            $mask = 0;
+            foreach ($configarray['error_types'] as $v) {
+                // Values may arrive as strings; cast to int safely.
+                $mask |= (int)$v;
+            }
+            $configarray['error_types'] = $mask;
+        }
+
         foreach ($configarray as $name => $value) {
             if (is_numeric($value) && $name !== 'release') {
                 if (strpos($value, '.') !== false) {
@@ -119,8 +129,15 @@ class helper {
      */
     public static function geterros(?\core\event\base $event = null): void {
         $config = get_config('tool_sentry');
-        if (isset($config->activate) && $config->activate) {
+        if (empty($config->activate)) {
+            return;
+        }
+        // Ensure SDK is initialized with cleaned config before capturing.
+        self::init($event);
+        try {
             \Sentry\captureLastError();
+        } catch (\Throwable $e) {
+            // Swallow SDK errors to avoid impacting Moodle execution.
         }
     }
 

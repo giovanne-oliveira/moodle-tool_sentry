@@ -213,11 +213,11 @@ if (is_siteadmin()) {
             )
         );
         $page->add(
-            new admin_setting_configselect(
+            new admin_setting_configmultiselect(
                 'tool_sentry/error_types',
                 get_string('error_types', 'tool_sentry'),
                 get_string('error_types_desc', 'tool_sentry'),
-                E_ALL,
+                [E_ALL],
                 [
                     E_ERROR             => 'E_ERROR',
                     E_WARNING           => 'E_WARNING',
