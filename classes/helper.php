@@ -44,6 +44,7 @@ class helper {
         unset($config->javascriptloader);
         // Internal flags not part of Sentry SDK options.
         unset($config->log_messages);
+        unset($config->enable_logs);
         unset($config->auto_hook);
         unset($config->replays_session_sample_rate);
         unset($config->replays_on_error_sample_rate);
@@ -208,7 +209,13 @@ class helper {
         }
 
         // Optional guard: allow toggling message capture via setting.
-        if (isset($config->log_messages) && (int)$config->log_messages !== 1) {
+        $logsEnabled = 0;
+        if (isset($config->enable_logs)) {
+            $logsEnabled = (int)$config->enable_logs;
+        } else if (isset($config->log_messages)) {
+            $logsEnabled = (int)$config->log_messages;
+        }
+        if ($logsEnabled !== 1) {
             return;
         }
 
@@ -297,39 +304,12 @@ class helper {
         }
 
         $javascriptloader = $config->javascriptloader;
-        $replaySession = isset($config->replays_session_sample_rate) ? (float)$config->replays_session_sample_rate : null;
-        $replayOnError = isset($config->replays_on_error_sample_rate) ? (float)$config->replays_on_error_sample_rate : null;
-        $config = self::get_clean_config($config);
-        if ($config === null) {
-            return;
+        try {
+            $PAGE->requires->js(new \moodle_url($javascriptloader));
+        } catch (\moodle_exception $e) {
+            // Fallback for absolute URLs not parseable by moodle_url.
+            $code = "(function(){var s=document.createElement('script');s.src='" . addslashes($javascriptloader) . "';s.crossOrigin='anonymous';document.head.appendChild(s);})();";
+            $PAGE->requires->js_init_code($code);
         }
-
-        $configjson = json_encode($config);
-
-        $code = "
-        (function() {
-              const script = document.createElement('script');
-              script.src = '$javascriptloader'; // substitua se não for usar PHP
-              script.crossOrigin = 'anonymous';
-              script.onload = function() {
-                try {
-                  var cfg = $configjson;
-                  // Attach Replay integration if sampling is configured.
-                  var rs = " + ($replaySession !== null ? json_encode($replaySession) : 'null') + ";
-                  var re = " + ($replayOnError !== null ? json_encode($replayOnError) : 'null') + ";
-                  if (rs !== null || re !== null) {
-                    cfg.integrations = (cfg.integrations || []).concat(Sentry.replayIntegration());
-                    if (rs !== null) cfg.replaysSessionSampleRate = rs;
-                    if (re !== null) cfg.replaysOnErrorSampleRate = re;
-                  }
-                  Sentry.init(cfg);
-                } catch (e) {
-                  // swallow client init errors
-                }
-              };
-              document.head.appendChild(script);
-            })();";
-
-        $PAGE->requires->js_init_code($code);
     }
 }
