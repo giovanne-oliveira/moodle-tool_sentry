@@ -330,9 +330,11 @@ class helper {
                 $uid = (string)$USER->id;
                 $uname = isset($USER->username) ? (string)$USER->username : '';
                 $uemail = isset($USER->email) ? (string)$USER->email : '';
+                $ufullname = function_exists('fullname') ? (string)fullname($USER) : '';
                 $userjs = "      Sentry.setUser({ id: '" . addslashes($uid) . "'" .
                     ($uname !== '' ? ", username: '" . addslashes($uname) . "'" : '') .
                     ($uemail !== '' ? ", email: '" . addslashes($uemail) . "'" : '') .
+                    ($ufullname !== '' ? ", name: '" . addslashes($ufullname) . "'" : '') .
                     " });\n";
             }
         }
