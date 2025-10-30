@@ -318,12 +318,32 @@ class helper {
         }
 
         $javascriptloader = $config->javascriptloader;
-        try {
-            $PAGE->requires->js(new \moodle_url($javascriptloader));
-        } catch (\moodle_exception $e) {
-            // Fallback for absolute URLs not parseable by moodle_url.
-            $code = "(function(){var s=document.createElement('script');s.src='" . addslashes($javascriptloader) . "';s.crossOrigin='anonymous';document.head.appendChild(s);})();";
-            $PAGE->requires->js_init_code($code);
-        }
+        $rs = isset($config->replays_session_sample_rate) ? (float)$config->replays_session_sample_rate : null;
+        $re = isset($config->replays_on_error_sample_rate) ? (float)$config->replays_on_error_sample_rate : null;
+        $sendpii = !empty($config->send_default_pii);
+
+        // Build JS that appends the loader script and initializes Replay integration and sampling.
+        $js = "(function(){\n" .
+            "  var s=document.createElement('script');\n" .
+            "  s.src='" . addslashes($javascriptloader) . "';\n" .
+            "  s.crossOrigin='anonymous';\n" .
+            "  s.onload=function(){\n" .
+            "    try {\n" .
+            "      var cfg={};\n" .
+            // Apply replay sampling if configured.
+            (is_null($rs) ? "" : "      cfg.replaysSessionSampleRate=" . json_encode($rs) . ";\n") .
+            (is_null($re) ? "" : "      cfg.replaysOnErrorSampleRate=" . json_encode($re) . ";\n") .
+            // Privacy per PII checkbox: if not sending default PII, relax masking (opt-out of defaults).
+            ($sendpii
+                ? ""
+                : "      var replayOpts={maskAllText:false,blockAllMedia:false};\n      cfg.integrations=[Sentry.replayIntegration(replayOpts)];\n") .
+            "      if(!cfg.integrations){ cfg.integrations=[Sentry.replayIntegration({})]; }\n" .
+            "      Sentry.init(cfg);\n" .
+            "    } catch(e){}\n" .
+            "  };\n" .
+            "  document.head.appendChild(s);\n" .
+            "})();";
+
+        $PAGE->requires->js_init_code($js);
     }
 }
