@@ -322,6 +322,21 @@ class helper {
         $re = isset($config->replays_on_error_sample_rate) ? (float)$config->replays_on_error_sample_rate : null;
         $sendpii = !empty($config->send_default_pii);
 
+        // Prepare user identification for Replay (only if PII is enabled and user is logged in).
+        $userjs = '';
+        if ($sendpii) {
+            global $USER;
+            if (isset($USER) && !isguestuser() && isloggedin()) {
+                $uid = (string)$USER->id;
+                $uname = isset($USER->username) ? (string)$USER->username : '';
+                $uemail = isset($USER->email) ? (string)$USER->email : '';
+                $userjs = "      Sentry.setUser({ id: '" . addslashes($uid) . "'" .
+                    ($uname !== '' ? ", username: '" . addslashes($uname) . "'" : '') .
+                    ($uemail !== '' ? ", email: '" . addslashes($uemail) . "'" : '') .
+                    " });\n";
+            }
+        }
+
         // Build JS that appends the loader script and initializes Replay integration and sampling.
         $js = "(function(){\n" .
             "  var s=document.createElement('script');\n" .
@@ -339,6 +354,7 @@ class helper {
                 : "      var replayOpts={maskAllText:false,blockAllMedia:false};\n      cfg.integrations=[Sentry.replayIntegration(replayOpts)];\n") .
             "      if(!cfg.integrations){ cfg.integrations=[Sentry.replayIntegration({})]; }\n" .
             "      Sentry.init(cfg);\n" .
+            $userjs .
             "    } catch(e){}\n" .
             "  };\n" .
             "  document.head.appendChild(s);\n" .
