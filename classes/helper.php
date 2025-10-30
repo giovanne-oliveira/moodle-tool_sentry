@@ -350,10 +350,10 @@ class helper {
             // Apply replay sampling if configured.
             (is_null($rs) ? "" : "      cfg.replaysSessionSampleRate=" . json_encode($rs) . ";\n") .
             (is_null($re) ? "" : "      cfg.replaysOnErrorSampleRate=" . json_encode($re) . ";\n") .
-            // Privacy per PII checkbox: if not sending default PII, relax masking (opt-out of defaults).
+            // Privacy per PII checkbox: if sending default PII, relax masking (explicit opt-in).
             ($sendpii
-                ? ""
-                : "      var replayOpts={maskAllText:false,blockAllMedia:false};\n      cfg.integrations=[Sentry.replayIntegration(replayOpts)];\n") .
+                ? "      var replayOpts={maskAllText:false,blockAllMedia:false};\n      cfg.integrations=[Sentry.replayIntegration(replayOpts)];\n"
+                : "") .
             "      if(!cfg.integrations){ cfg.integrations=[Sentry.replayIntegration({})]; }\n" .
             "      Sentry.init(cfg);\n" .
             $userjs .
