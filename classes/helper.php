@@ -60,14 +60,30 @@ class helper {
 
         $configarray = (array) $config;
 
-        // Combine error_types multiselect (array) into PHP bitmask integer.
-        if (isset($configarray['error_types']) && is_array($configarray['error_types'])) {
-            $mask = 0;
-            foreach ($configarray['error_types'] as $v) {
-                // Values may arrive as strings; cast to int safely.
-                $mask |= (int)$v;
+        // Normalize error_types to an integer bitmask for Sentry.
+        if (isset($configarray['error_types'])) {
+            if (is_array($configarray['error_types'])) {
+                $mask = 0;
+                foreach ($configarray['error_types'] as $v) {
+                    $mask |= (int)$v;
+                }
+                $configarray['error_types'] = $mask;
+            } else if (is_string($configarray['error_types'])) {
+                // Moodle stores multiselect as comma-separated string (e.g., "1,2,4").
+                if (strpos($configarray['error_types'], ',') !== false) {
+                    $parts = array_filter(array_map('trim', explode(',', $configarray['error_types'])), 'strlen');
+                    $mask = 0;
+                    foreach ($parts as $p) {
+                        $mask |= (int)$p;
+                    }
+                    $configarray['error_types'] = $mask;
+                } else if (is_numeric($configarray['error_types'])) {
+                    $configarray['error_types'] = (int)$configarray['error_types'];
+                } else {
+                    // Fallback: remove invalid value to let SDK default.
+                    unset($configarray['error_types']);
+                }
             }
-            $configarray['error_types'] = $mask;
         }
 
         foreach ($configarray as $name => $value) {
