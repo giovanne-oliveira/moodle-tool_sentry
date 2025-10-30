@@ -1,0 +1,10 @@
+{
+    "require": {
+        "sentry/sentry": "^4.17"
+    },
+    "config": {
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    }
+}
