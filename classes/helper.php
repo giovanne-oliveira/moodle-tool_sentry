@@ -151,7 +151,40 @@ class helper {
         // Ensure SDK is initialized with cleaned config before capturing.
         self::init($event);
         try {
-            \Sentry\captureLastError();
+            $last = error_get_last();
+            if (!$last || empty($last['message'])) {
+                return;
+            }
+            $errno = isset($last['type']) ? (int)$last['type'] : E_ERROR;
+
+            // Map PHP error number to Sentry level.
+            $level = 'error';
+            switch ($errno) {
+                case E_NOTICE:
+                case E_USER_NOTICE:
+                case E_DEPRECATED:
+                case E_USER_DEPRECATED:
+                case E_STRICT:
+                    $level = 'info';
+                    break;
+                case E_WARNING:
+                case E_USER_WARNING:
+                case E_CORE_WARNING:
+                case E_COMPILE_WARNING:
+                    $level = 'warning';
+                    break;
+                default:
+                    $level = 'error';
+            }
+
+            \Sentry\withScope(function (\Sentry\State\Scope $scope) use ($last, $errno) {
+                $scope->setContext('php_last_error', [
+                    'errno' => $errno,
+                    'file' => $last['file'] ?? null,
+                    'line' => $last['line'] ?? null,
+                ]);
+            });
+            \Sentry\captureMessage((string)$last['message'], $level);
         } catch (\Throwable $e) {
             // Swallow SDK errors to avoid impacting Moodle execution.
         }
